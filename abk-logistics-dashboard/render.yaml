@@ -20,8 +20,8 @@ services:
     name: abk-backend
     env: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./abk-logistics-dashboard/backend/Dockerfile
+    dockerContext: ./abk-logistics-dashboard/backend
     preDeployCommand: >
       python manage.py makemigrations accounts shipments data_ingestion --noinput &&
       python manage.py migrate --noinput &&
@@ -69,8 +69,8 @@ services:
     name: abk-frontend
     env: static
     plan: free
-    buildCommand: "cd frontend && npm install && npm run build"
-    staticPublishPath: ./frontend/build
+    buildCommand: "cd abk-logistics-dashboard/frontend && npm install && npm run build"
+    staticPublishPath: ./abk-logistics-dashboard/frontend/build
     envVars:
       - key: REACT_APP_API_BASE_URL
         value: "https://abk-backend.onrender.com/api"
