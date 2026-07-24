@@ -67,13 +67,13 @@ services:
 
   - type: web
     name: abk-frontend
-    env: static
-    plan: free
-    buildCommand: "cd abk-logistics-dashboard/frontend && npm install && npm run build"
-    staticPublishPath: ./abk-logistics-dashboard/frontend/build
+    runtime: static
+    rootDir: abk-logistics-dashboard/frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
     envVars:
-      - key: REACT_APP_API_BASE_URL
-        value: "https://abk-backend.onrender.com/api"
+      - key: REACT_APP_API_URL
+        value: https://abk-backend.onrender.com/api
     routes:
       - type: rewrite
         source: /*
