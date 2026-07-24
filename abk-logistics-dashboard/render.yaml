@@ -1,0 +1,80 @@
+# Render Blueprint — deploys the whole demo (database + backend + frontend)
+# in one click, using only free instance types. This is meant for a
+# LOOK-AROUND DEMO with sample data — not for storing real customer data
+# (see README > "Online Demo Deployment" for why, and where to run it
+# privately once you're ready for real data).
+#
+# Note: Celery/Redis are intentionally left out here — background workers
+# require a paid Render plan, and the dashboard works fine without them for
+# demo purposes (you just won't get scheduled auto-sync; manual "Refresh
+# now" and Excel upload both still work).
+
+databases:
+  - name: abk-db
+    plan: free
+    databaseName: abk_logistics
+    user: abk_admin
+
+services:
+  - type: web
+    name: abk-backend
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    preDeployCommand: >
+      python manage.py makemigrations accounts shipments data_ingestion --noinput &&
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      python manage.py bootstrap_demo
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: TIME_ZONE
+        value: "Asia/Kolkata"
+      - key: DB_NAME
+        fromDatabase:
+          name: abk-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: abk-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: abk-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: abk-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: abk-db
+          property: port
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://abk-frontend.onrender.com"
+      - key: DEMO_ADMIN_USERNAME
+        value: "admin"
+      - key: DEMO_ADMIN_EMAIL
+        value: "admin@example.com"
+      - key: DEMO_ADMIN_PASSWORD
+        value: "ABKDemo2026!"
+
+  - type: web
+    name: abk-frontend
+    env: static
+    plan: free
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: REACT_APP_API_BASE_URL
+        value: "https://abk-backend.onrender.com/api"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

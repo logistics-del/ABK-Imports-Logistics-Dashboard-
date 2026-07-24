@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-abk_logistics}
+      POSTGRES_USER: ${DB_USER:-abk_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-abk_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-abk_admin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py makemigrations accounts shipments data_ingestion &&
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn abk_dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+
+  celery_worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - backend
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    command: celery -A abk_dashboard worker --loglevel=info
+
+  celery_beat:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - backend
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    command: celery -A abk_dashboard beat --loglevel=info
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_BASE_URL: http://localhost:8000/api
+      WATCHPACK_POLLING: "true"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  media_data:
