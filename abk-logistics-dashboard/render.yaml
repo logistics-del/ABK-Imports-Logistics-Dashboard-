@@ -22,11 +22,11 @@ services:
     plan: free
     dockerfilePath: ./abk-logistics-dashboard/backend/Dockerfile
     dockerContext: ./abk-logistics-dashboard/backend
-    preDeployCommand: >
-      python manage.py makemigrations accounts shipments data_ingestion --noinput &&
+    dockerCommand: >
+      sh -c "python manage.py makemigrations accounts shipments data_ingestion --noinput &&
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
-      python manage.py bootstrap_demo
+      python manage.py bootstrap_demo && gunicorn abk_dashboard.wsgi:application --bind 0.0.0.0:8000 --workers 2"
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
