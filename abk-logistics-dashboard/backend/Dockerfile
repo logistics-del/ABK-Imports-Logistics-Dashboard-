@@ -18,4 +18,4 @@ RUN mkdir -p /app/media/exports /app/media/gsheet_credentials /app/staticfiles
 
 EXPOSE 8000
 
-CMD ["gunicorn", "abk_dashboard.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["sh", "start.sh"]
