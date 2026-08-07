@@ -28,7 +28,15 @@ class Command(BaseCommand):
             )
             self.stdout.write(self.style.SUCCESS(f"Created demo admin user '{username}'."))
         else:
-            self.stdout.write(f"User '{username}' already exists — skipping creation.")
+            existing_user = User.objects.get(username=username)
+            if existing_user.role != "admin":
+                existing_user.role = "admin"
+                existing_user.is_superuser = True
+                existing_user.is_staff = True
+                existing_user.save()
+                self.stdout.write(self.style.SUCCESS(f"Fixed role for '{username}' back to admin."))
+            else:
+                self.stdout.write(f"User '{username}' already exists — skipping creation.")
 
         if not Shipment.objects.exists():
             call_command("seed_demo_data", count=800)
